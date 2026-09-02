@@ -1,0 +1,6 @@
+service:
+  users:
+    server: http://localhost
+    port: 8082
+    username: admin
+    password: aW3s0m3
