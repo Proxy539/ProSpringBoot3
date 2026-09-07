@@ -1,22 +1,31 @@
 package com.apress.myretro.board;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 
 import java.util.UUID;
 
 @Builder
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class Card {
 
+    @Id
     private UUID id;
 
-    @NotBlank(message = "A comment must be provided always")
-    @NotNull
+    @NotBlank
     private String comment;
 
-    @NotNull(message = "A CardType HAPPY|MEH|SAD must be provided")
+    @NotNull
     private CardType cardType;
+
+    @JsonIgnore
+    private RetroBoard retroBoard;
 }

@@ -9,12 +9,11 @@ import com.apress.myretro.service.RetroBoardService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import reactor.test.StepVerifier;
 
-import java.util.Collection;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 public class MyretroApplicationTest {
@@ -28,88 +27,110 @@ public class MyretroApplicationTest {
 
     @Test
     void saveRetroBoardTest() {
-        RetroBoard retroBoard = service.save(RetroBoard.builder()
-                .name("Gathering 2023")
-                .build());
-
-        assertThat(retroBoard).isNotNull();
-        assertThat(retroBoard.getId()).isNotNull();
+        StepVerifier.create(service.save(RetroBoard.builder()
+                        .name("Gathering 2023")
+                        .build()))
+                .assertNext(retroBoard -> {
+                    assertThat(retroBoard).isNotNull();
+                    assertThat(retroBoard.getId()).isNotNull();
+                })
+                .verifyComplete();
     }
 
     @Test
     void findAllRetroBoardsTest() {
-        Iterable<RetroBoard> retroBoards = service.findAll();
-        assertThat(retroBoards).isNotNull();
-        assertThat(retroBoards).isNotEmpty();
+        StepVerifier.create(service.findAll().collectList())
+                .assertNext(retroBoards -> {
+                    assertThat(retroBoards).isNotNull();
+                    assertThat(retroBoards).isNotEmpty();
+                })
+                .verifyComplete();
     }
 
     @Test
     void cardsRetroBoardNotFoundTest() {
-        assertThatThrownBy(() -> {
-            service.findAllCardsFromRetroBoard(UUID.randomUUID());
-        }).isInstanceOf(RetroBoardNotFoundException.class);
+        StepVerifier.create(service.findAllCardsFromRetroBoard(UUID.randomUUID()))
+                .verifyError(RetroBoardNotFoundException.class);
     }
 
     @Test
     void findRetroBoardTest() {
-        RetroBoard retroBoard = service.findById(retroBoardUUID);
-        assertThat(retroBoard).isNotNull();
-        assertThat(retroBoard.getName()).isEqualTo("Spring Boot 3.0 Meeting");
-        assertThat(retroBoard.getId()).isEqualTo(retroBoardUUID);
+        StepVerifier.create(service.findById(retroBoardUUID))
+                .assertNext(retroBoard -> {
+                    assertThat(retroBoard).isNotNull();
+                    assertThat(retroBoard.getName()).isEqualTo("Spring Boot Conference 2023");
+                    assertThat(retroBoard.getId()).isEqualTo(retroBoardUUID);
+                })
+                .verifyComplete();
     }
 
     @Test
     void findCardsInRetroBoardTest() {
-        RetroBoard retroBoard = service.findById(retroBoardUUID);
-        assertThat(retroBoard).isNotNull();
-        assertThat(retroBoard.getCards()).isNotEmpty();
+        StepVerifier.create(service.findById(retroBoardUUID))
+                .assertNext(retroBoard -> {
+                    assertThat(retroBoard).isNotNull();
+                    assertThat(retroBoard.getCards()).isNotEmpty();
+                })
+                .verifyComplete();
     }
 
     @Test
     void addCardToRetroBoardTest() {
-        Card card = service.addCardToRetroBoard(retroBoardUUID, Card.builder()
-                .comment("Amazing session")
-                .cardType(CardType.HAPPY)
-                .build());
+        StepVerifier.create(service.addCardToRetroBoard(retroBoardUUID, Card.builder()
+                        .comment("Amazing session")
+                        .cardType(CardType.HAPPY)
+                        .build()))
+                .assertNext(card -> {
+                    assertThat(card).isNotNull();
+                    assertThat(card.getId()).isNotNull();
+                })
+                .verifyComplete();
 
-        assertThat(card).isNotNull();
-        assertThat(card.getId()).isNotNull();
-
-        RetroBoard retroBoard = service.findById(retroBoardUUID);
-        assertThat(retroBoard).isNotNull();
-        assertThat(retroBoard.getCards()).isNotEmpty();
+        StepVerifier.create(service.findById(retroBoardUUID))
+                .assertNext(retroBoard -> {
+                    assertThat(retroBoard).isNotNull();
+                    assertThat(retroBoard.getCards()).isNotEmpty();
+                })
+                .verifyComplete();
     }
 
     @Test
     void findAllCardsFromRetroBoardTest() {
-        Iterable<Card> cardList = service.findAllCardsFromRetroBoard(retroBoardUUID);
-
-        assertThat(cardList).isNotNull();
-        assertThat(((Collection<?>) cardList).size()).isGreaterThan(3);
+        StepVerifier.create(service.findAllCardsFromRetroBoard(retroBoardUUID).collectList())
+                .assertNext(cardList -> {
+                    assertThat(cardList).isNotNull();
+                    assertThat(cardList.size()).isGreaterThan(3);
+                })
+                .verifyComplete();
     }
 
     @Test
     void removeCardsFromRetroBoardTest() {
-        service.removeCardFromRetroBoard(retroBoardUUID, cardUUID);
-        RetroBoard retroBoard = service.findById(retroBoardUUID);
+        StepVerifier.create(service.removeCardByUUID(retroBoardUUID, cardUUID))
+                .verifyComplete();
 
-        assertThat(retroBoard).isNotNull();
-        assertThat(retroBoard.getCards()).isNotEmpty();
-        assertThat(retroBoard.getCards()).hasSizeLessThan(4);
+        StepVerifier.create(service.findById(retroBoardUUID))
+                .assertNext(retroBoard -> {
+                    assertThat(retroBoard).isNotNull();
+                    assertThat(retroBoard.getCards()).isNotEmpty();
+                    assertThat(retroBoard.getCards()).hasSizeLessThan(4);
+                })
+                .verifyComplete();
     }
 
     @Test
     void finCardByIdInRetroBoardTest() {
-        Card card = service.findCardByUUIDFromRetroBoard(retroBoardUUID, mehCardUUID);
-
-        assertThat(card).isNotNull();
-        assertThat(card.getId()).isEqualTo(mehCardUUID);
+        StepVerifier.create(service.findCardByUUID(mehCardUUID))
+                .assertNext(card -> {
+                    assertThat(card).isNotNull();
+                    assertThat(card.getId()).isEqualTo(mehCardUUID);
+                })
+                .verifyComplete();
     }
 
     @Test
     void notFoundCardInRetroBoardTest() {
-        assertThatThrownBy(() -> {
-            service.findCardByUUIDFromRetroBoard(retroBoardUUID, UUID.randomUUID());
-        }).isInstanceOf(CardNotFoundException.class);
+        StepVerifier.create(service.findCardByUUID(UUID.randomUUID()))
+                .verifyError(CardNotFoundException.class);
     }
 }

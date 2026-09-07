@@ -1,0 +1,8 @@
+services:
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: retrodb
+    ports:
+      - "27017:27017"

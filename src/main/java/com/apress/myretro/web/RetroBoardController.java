@@ -3,14 +3,9 @@ package com.apress.myretro.web;
 import com.apress.myretro.board.Card;
 import com.apress.myretro.board.RetroBoard;
 import com.apress.myretro.service.RetroBoardService;
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,14 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.net.URI;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -37,73 +27,39 @@ public class RetroBoardController {
     private RetroBoardService retroBoardService;
 
     @GetMapping
-    public ResponseEntity<Iterable<RetroBoard>> getAllRetroBoards() {
-        return ResponseEntity.ok(retroBoardService.findAll());
+    public Flux<RetroBoard> getAllRetroBoards() {
+        return retroBoardService.findAll();
     }
 
     @PostMapping
-    public ResponseEntity<RetroBoard> saveRetroBoard(@Valid @RequestBody RetroBoard retroBoard) {
-        RetroBoard result = retroBoardService.save(retroBoard);
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{uuid}")
-                .buildAndExpand(result.getId().toString())
-                .toUri();
-        return ResponseEntity.created(location).body(result);
+    public Mono<RetroBoard> saveRetroBoard(@RequestBody RetroBoard retroBoard) {
+        return retroBoardService.save(retroBoard);
     }
 
     @GetMapping("/{uuid}")
-    public ResponseEntity<RetroBoard> findRetroBoardById(@PathVariable UUID uuid) {
-        return ResponseEntity.ok(retroBoardService.findById(uuid));
+    public Mono<RetroBoard> findRetroBoardById(@PathVariable UUID uuid) {
+        return retroBoardService.findById(uuid);
     }
 
     @GetMapping("/{uuid}/cards")
-    public ResponseEntity<Iterable<Card>> getAllCardsFromBoard(@PathVariable UUID uuid) {
-        return ResponseEntity.ok(retroBoardService.findAllCardsFromRetroBoard(uuid));
+    public Flux<Card> getAllCardsFromBoard(@PathVariable UUID uuid) {
+        return retroBoardService.findAllCardsFromRetroBoard(uuid);
     }
 
     @PutMapping("/{uuid}/cards")
-    public ResponseEntity<Card> addCardToRetroBoard(@PathVariable UUID uuid, @Valid @RequestBody Card card) {
-        Card result = retroBoardService.addCardToRetroBoard(uuid, card);
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{uuid}/cards/{uuidCard}|")
-                .buildAndExpand(uuid.toString(), result.getId().toString())
-                .toUri();
-
-        return ResponseEntity.created(location).body(result);
+    public Mono<Card> addCardToRetroBoard(@PathVariable UUID uuid, @RequestBody Card card) {
+        return retroBoardService.addCardToRetroBoard(uuid, card);
     }
 
-    @GetMapping("/{uuid}/cards/{uuidCard}")
-    public ResponseEntity<Card> getCardFromRetroBoard(@PathVariable UUID uuid, @PathVariable UUID uuidCard) {
-        return ResponseEntity.ok(retroBoardService.findCardByUUIDFromRetroBoard(uuid, uuidCard));
+    @GetMapping("/cards/{uuidCard}")
+    public Mono<Card> getCardByUUID(@PathVariable UUID uuidCard) {
+        return retroBoardService.findCardByUUID(uuidCard);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{uuid}/card/{uuidCard}")
-    public void deleteCardFromRetroBoard(@PathVariable UUID uuid,
-                                         @PathVariable UUID uuidCard) {
-        retroBoardService.removeCardFromRetroBoard(uuid, uuidCard);
+    @DeleteMapping("/{uuid}/cards/{uuidCard}")
+    public Mono<Void> deleteCardFromRetroBoard(@PathVariable UUID uuid, @PathVariable UUID uuidCard) {
+        return retroBoardService.removeCardByUUID(uuid, uuidCard);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
-
-        response.put("msg", "There is an error");
-        response.put("code", HttpStatus.BAD_REQUEST.value());
-        response.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-
-        response.put("errors", errors);
-
-        return response;
-    }
 }
